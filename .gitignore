@@ -1,0 +1,10 @@
+# Runtime output
+ModData/
+profiles/
+*.log
+*.bak
+*.codex-backup*
+
+# Release/build artifacts
+*.zip
+*.tmp

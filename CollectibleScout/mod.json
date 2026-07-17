@@ -1,0 +1,8 @@
+{
+  "id": "com.lorenzo.collectiblescout",
+  "name": "Collectible Scout",
+  "description": "Highlights the nearest loaded collectible in-game.",
+  "author": "Lorenzo",
+  "version": "0.2.0",
+  "dependencies": []
+}
