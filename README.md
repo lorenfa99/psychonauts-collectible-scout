@@ -84,4 +84,4 @@ Part of the Psychonauts Collectible Tools set:
 
 ## Credits
 
-Created by Lorenzo with Codex assistance.
+Created with Codex assistance.
