@@ -249,6 +249,11 @@ function CollectibleScout(Ob)
 		if ent.bCollected == 1 or ent.bHide == 1 or ent.bSBHidden == 1 then
 			return 0
 		end
+		-- Placed Co_Figment objects are not pickups until onThaw assigns an ID
+		-- and registers their trigger. Uninitialized objects can remain in walls.
+		if ent.Type == 'Co_Figment' and (ent.ID == nil or ent.ID == 0) then
+			return 0
+		end
 		return 1
 	end
 
@@ -676,7 +681,7 @@ function CollectibleScout(Ob)
 
 	function Ob:highlightTargetEntity(target)
 		if target == self.highlightTarget and self.highlightFX ~= nil then
-			if target.splineFollowing ~= nil then
+			if target.splineFollowing ~= nil and target.trigger ~= nil then
 				local x, y, z = self:getTargetPosition(target)
 				if x ~= nil then
 					self.highlightFX:setPosition(x, y + self.highlightOffsetY, z)
@@ -702,7 +707,7 @@ function CollectibleScout(Ob)
 						SetEntityFlag(self.highlightFX, ENTITY_POST_EFFECTS, 1)
 					end
 					self.highlightFX:run()
-					if target.splineFollowing ~= nil then
+					if target.splineFollowing ~= nil and target.trigger ~= nil then
 						self.highlightFX:detach()
 						local x, y, z = self:getTargetPosition(target)
 						if x ~= nil then

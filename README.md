@@ -11,6 +11,7 @@ Collectible Scout is an Astralathe mod for Psychonauts that makes late-game coll
 - Optional target switching support for builds of Astralathe that expose D-pad Down to Lua.
 - Filters noisy non-collectibles such as 1UPs and level configuration props.
 - Skips collected and script-hidden targets, including figments that are still dissipating.
+- Skips placed figment objects that have not been initialized as collectible pickups.
 - Writes debug scan reports to `ModData/CollectibleScout/last_scan.txt`.
 
 ## Tracked Collectibles

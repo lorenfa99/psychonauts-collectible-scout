@@ -80,10 +80,12 @@ function makeFX()
 end
 
 function makeEntity(name, x, pickupX)
-	local ent = {Name = name, x = x, y = 0, z = 0, className = 'global.collectibles.Figment'}
+	local ent = {Name = name, x = x, y = 0, z = 0, className = 'global.collectibles.Figment', Type = 'Co_Figment', ID = 1, value = 1}
 	function ent:getPosition() return self.x, self.y, self.z end
 	if pickupX ~= nil then
 		ent.className = 'global.collectibles.SplineFigment'
+		ent.Type = 'global.collectibles.SplineFigment'
+		ent.ID = nil
 		ent.splineFollowing = 1
 		ent.trigger = {x = pickupX, y = 0, z = 0}
 	end
@@ -164,7 +166,7 @@ end)
 
 test('ordinary figments retain entity positioning and joint attachment', function()
 	local ent = makeEntity('Static', 250)
-	ent.trigger = {x = 999, y = 999, z = 999}
+	ent.splineFollowing = 1 -- Also present on normal Figment objects in the game.
 	local scout = newScout({ent})
 	scout:updateOnce()
 	near(scout.bestDistance, 250)
@@ -202,6 +204,51 @@ test('dead, collected and script-hidden entities never become candidates', funct
 	scout:findNearest()
 	assert(getn(scout.candidates) == 1)
 	assert(scout.bestEntity == live)
+end)
+
+test('uninitialized placed figments do not produce unreachable wall markers', function()
+	local placed = makeEntity('Fig6', 10)
+	placed.ID = nil
+	placed.value = nil
+	placed.splineFollowing = 1
+	local live = makeEntity('Thawed pickup', 100)
+	local scout = newScout({placed, live})
+	scout:updateOnce()
+	assert(getn(scout.candidates) == 1 and scout.bestEntity == live)
+	placed.ID = 0
+	scout:findNearest()
+	assert(getn(scout.candidates) == 1 and scout.bestEntity == live)
+end)
+
+test('initialized figments stay eligible even with the default point value', function()
+	local live = makeEntity('Thawed pickup', 100)
+	live.value = nil
+	local scout = newScout({live})
+	scout:findNearest()
+	assert(scout.bestEntity == live)
+end)
+
+test('cached figments that lose their pickup ID are no longer selected', function()
+	local first = makeEntity('First', 50)
+	local second = makeEntity('Second', 100)
+	local scout = newScout({first, second})
+	scout:updateOnce()
+	first.ID = nil
+	advance(0.2)
+	assert(scout.bestEntity == second)
+	scout:skipCurrentTarget()
+	assert(scout.bestEntity == second)
+end)
+
+test('a figment becomes available after its normal pickup initialization', function()
+	local placed = makeEntity('Waiting to thaw', 100)
+	placed.ID = nil
+	local scout = newScout({placed})
+	scout:updateOnce()
+	assert(scout.bestEntity == nil)
+	placed.ID = 7
+	advance(1)
+	assert(scout.bestEntity == placed)
 end)
 
 test('timer refresh follows a moving pickup without rebuilding its effect', function()
