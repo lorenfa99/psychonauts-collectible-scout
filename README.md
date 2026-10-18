@@ -41,6 +41,17 @@ The visual target highlight and HUD text automatically disappear after 5 seconds
 
 ## Installation
 
+### Windows installer
+
+1. Install [Astralathe](https://gitlab.com/scrunguscrungus/astralathe/-/wikis/Installing%20Astralathe) if you do not already use it, and close Psychonauts.
+2. Download `CollectibleScout-0.2.2.zip` from the [latest release](https://github.com/lorenfa99/psychonauts-collectible-scout/releases/latest) and extract it.
+3. Double-click `Install.cmd`. It finds Steam installs automatically, or lets you choose the game folder.
+4. Launch the game through `AstralatheLauncher.exe` and press **F3** to scan.
+
+The installer enables the mod, updates an existing installation in place, and backs up overwritten files under `Psychonauts/CollectibleScout-Backups/`. Other files in the mod folder are preserved. If F3 already runs another script, you can choose to keep it.
+
+### Manual installation
+
 1. Install Astralathe for Psychonauts.
 2. Copy the `CollectibleScout` folder into the game's `ModResource` folder.
 3. Rename the copied folder to `Collectible Scout` if your Astralathe mod list expects the display name as the folder name.
@@ -74,6 +85,14 @@ lua tests/collectible_scout_test.lua
 ```
 
 The tests mock engine calls and cover moving pickup positions, cached target selection, target switching, unavailable figments, the five-second display lifetime, camp collectibles, and mental-level collectible selection across level families. The mod uses Lua 4.0 upvalue syntax, so newer Lua interpreters cannot run it unchanged. In-game verification of pickup collection in Milla's fan room and representative other levels is still needed.
+
+On Windows, run the installer tests with:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tests/installer_test.ps1
+```
+
+These use temporary dummy game folders to check installation, upgrades, backups, rollback, hotkey conflicts, and Steam library detection.
 
 ## Related Mods
 
