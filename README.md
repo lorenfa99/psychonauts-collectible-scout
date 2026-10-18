@@ -73,7 +73,7 @@ Run the regression tests from the repository root with a Lua 4.0 interpreter:
 lua tests/collectible_scout_test.lua
 ```
 
-The tests mock engine calls and cover moving pickup positions, cached target selection, target switching, unavailable figments, and the five-second display lifetime. The mod uses Lua 4.0 upvalue syntax, so newer Lua interpreters cannot run it unchanged. In-game verification in Milla's fan room is still needed to confirm the reported case.
+The tests mock engine calls and cover moving pickup positions, cached target selection, target switching, unavailable figments, the five-second display lifetime, camp collectibles, and mental-level collectible selection across level families. The mod uses Lua 4.0 upvalue syntax, so newer Lua interpreters cannot run it unchanged. In-game verification of pickup collection in Milla's fan room and representative other levels is still needed.
 
 ## Related Mods
 

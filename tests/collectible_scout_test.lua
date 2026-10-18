@@ -11,11 +11,11 @@ function fso(name, className)
 end
 
 function GetCurrentLevelName()
-	return 'MILL'
+	return testLevelName or 'MILL'
 end
 
 function FindScriptObject(name)
-	return {levelType = 'mental'}
+	return {levelType = testLevelType or 'mental'}
 end
 
 function GetGameTimeSecs()
@@ -95,6 +95,8 @@ end
 function newScout(entities)
 	testTime = 0
 	testScans = 0
+	testLevelName = 'MILL'
+	testLevelType = 'mental'
 	testEntities = entities
 	TriggerOBB_GetAABB = pickupBounds
 	Global = {player = makeEntity('Raz', 0), levelScript = {}}
@@ -383,6 +385,53 @@ test('continuous tracking still accepts refreshes from patched Astralathe', func
 	near(scout.highlightFX.x, 500)
 	scout:stopTracker()
 	assert(scout.timers[scout.TIMER_TRACKER] == nil)
+end)
+
+function collectibleSetForLevel()
+	local scanTypes = CollectibleScout().scanTypes
+	local entities = {}
+	local i
+	for i = 1, getn(scanTypes) do
+		local ent = makeEntity(scanTypes[i].shortLabel, i * 100)
+		ent.className = scanTypes[i].className
+		ent.Type = ent.className
+		ent.ID = nil
+		ent.value = nil
+		if ent.className == 'global.collectibles.Figment' then
+			ent.Type = 'Co_Figment'
+			ent.ID = 7
+		elseif ent.className == 'global.collectibles.SplineFigment' then
+			ent.splineFollowing = 1
+			ent.trigger = {x = i * 100, y = 0, z = 0}
+		end
+		tinsert(entities, ent)
+	end
+	return entities
+end
+
+test('camp collectibles and upgrades remain available without figment IDs', function()
+	local scout = newScout(collectibleSetForLevel())
+	testLevelName = 'CAKC'
+	testLevelType = 'real'
+	scout:findNearest()
+	assert(getn(scout.candidates) == 8)
+	assert(scout.bestShortLabel == 'Card')
+	local i
+	for i = 1, getn(scout.candidates) do
+		assert(scout.candidates[i].entity.ID == nil)
+	end
+end)
+
+test('mental-level collectibles remain available across level families', function()
+	local levels = {'BBA1', 'BBA2', 'BBLT', 'SACU', 'NIMP', 'MIFL', 'MIMM', 'MILL', 'LOMA', 'MMI1', 'MMI2', 'THMS', 'THCW', 'WWMA', 'BVRB', 'BVES', 'MCTC'}
+	local i
+	for i = 1, getn(levels) do
+		local scout = newScout(collectibleSetForLevel())
+		testLevelName = levels[i]
+		scout:findNearest()
+		assert(getn(scout.candidates) == 9, 'collectible selection changed in '..levels[i])
+		assert(scout.bestShortLabel == 'Web')
+	end
 end)
 
 print(testCount..' tests passed')
