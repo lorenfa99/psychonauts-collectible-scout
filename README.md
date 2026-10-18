@@ -5,10 +5,12 @@ Collectible Scout is an Astralathe mod for Psychonauts that makes late-game coll
 ## Features
 
 - Highlights the closest loaded collectible for 5 seconds.
+- Follows moving spline figments at their live pickup position during the highlight.
 - Shows a compact HUD label with collectible type, distance, and direction.
 - Re-scans when no target is found, which helps in levels that stream or load small sections at a time.
 - Optional target switching support for builds of Astralathe that expose D-pad Down to Lua.
 - Filters noisy non-collectibles such as 1UPs and level configuration props.
+- Skips collected and script-hidden targets, including figments that are still dissipating.
 - Writes debug scan reports to `ModData/CollectibleScout/last_scan.txt`.
 
 ## Tracked Collectibles
@@ -61,6 +63,16 @@ Psychonauts/
 Collectible Scout only sees entities that the game has currently loaded. Some levels, especially segmented or race-like levels, may not expose every collectible at once. If the HUD says `Scout: none`, move through the level and scan again when new sections load.
 
 D-pad support is not provided by stock Psychonauts input binding. It requires an Astralathe build or patch that calls the scanner from D-pad Up and target switching from D-pad Down.
+
+## Development
+
+Run the regression tests from the repository root with a Lua 4.0 interpreter:
+
+```text
+lua tests/collectible_scout_test.lua
+```
+
+The tests mock engine calls and cover moving pickup positions, cached target selection, target switching, unavailable figments, and the five-second display lifetime. The mod uses Lua 4.0 upvalue syntax, so newer Lua interpreters cannot run it unchanged. In-game verification in Milla's fan room is still needed to confirm the reported case.
 
 ## Related Mods
 

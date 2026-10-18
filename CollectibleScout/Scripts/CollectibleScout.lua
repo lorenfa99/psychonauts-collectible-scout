@@ -25,6 +25,7 @@ function CollectibleScout(Ob)
 	Ob.TIMER_HIDE_HUD = 'CollectibleScoutHideHud'
 	Ob.TIMER_CLEAR_HIGHLIGHT = 'CollectibleScoutClearHighlight'
 	Ob.TIMER_TRACKER = '15950'
+	Ob.TIMER_REFRESH = '15951'
 	Ob.lines = {}
 	Ob.totalLoaded = 0
 	Ob.currentLabel = ''
@@ -35,6 +36,8 @@ function CollectibleScout(Ob)
 	Ob.lastHudText = nil
 	Ob.hudDisplaySecs = 5
 	Ob.highlightDisplaySecs = 5
+	Ob.refreshInterval = 100
+	Ob.visualsUntil = nil
 	Ob.trackerActive = 0
 	Ob.trackerInterval = 1500
 	Ob.noTargetRetrySecs = 0.75
@@ -102,7 +105,13 @@ function CollectibleScout(Ob)
 		elseif id == self.TIMER_HIDE_HUD then
 			self:clearHud()
 		elseif id == self.TIMER_CLEAR_HIGHLIGHT then
-			self:clearHighlight()
+			self:clearTemporaryVisuals()
+		elseif id == self.TIMER_REFRESH then
+			self:killTimer(id)
+			self:refreshSelectedHud()
+			if self.visualsUntil ~= nil then
+				self:createTimer(self.refreshInterval, self.TIMER_REFRESH)
+			end
 		else
 			%Ob.Parent.onTimer(self, id)
 		end
@@ -230,9 +239,37 @@ function CollectibleScout(Ob)
 		return '(unnamed)'
 	end
 
+	function Ob:isCandidateAvailable(ent)
+		if ent == nil or ent.getPosition == nil then
+			return 0
+		end
+		if IsDead ~= nil and IsDead(ent) == 1 then
+			return 0
+		end
+		if ent.bCollected == 1 or ent.bHide == 1 or ent.bSBHidden == 1 then
+			return 0
+		end
+		return 1
+	end
+
+	function Ob:getTargetPosition(ent)
+		if ent == nil or ent.getPosition == nil then
+			return
+		end
+		-- Spline figments can move their mesh and pickup volume without moving
+		-- the entity origin. The AABB starts with the pickup volume's world center.
+		if ent.splineFollowing ~= nil and ent.trigger ~= nil and TriggerOBB_GetAABB ~= nil then
+			local x, y, z = TriggerOBB_GetAABB(ent.trigger)
+			if x ~= nil and y ~= nil and z ~= nil then
+				return x, y, z
+			end
+		end
+		return ent:getPosition()
+	end
+
 	function Ob:getPositionText(ent)
 		if ent ~= nil and ent.getPosition ~= nil then
-			local x, y, z = ent:getPosition()
+			local x, y, z = self:getTargetPosition(ent)
 			if x ~= nil then
 				return ' pos=('..self:numberText(x)..', '..self:numberText(y)..', '..self:numberText(z)..')'..self:getDistanceText(x, y, z)
 			end
@@ -305,11 +342,11 @@ function CollectibleScout(Ob)
 	function Ob:recordCandidate(ent)
 		self.currentCount = self.currentCount + 1
 		self.totalLoaded = self.totalLoaded + 1
-		if ent == nil or ent.getPosition == nil or self.playerX == nil then
+		if self:isCandidateAvailable(ent) ~= 1 or self.playerX == nil then
 			return
 		end
 
-		local x, y, z = ent:getPosition()
+		local x, y, z = self:getTargetPosition(ent)
 		if x == nil then
 			return
 		end
@@ -547,6 +584,8 @@ function CollectibleScout(Ob)
 	end
 
 	function Ob:clearTemporaryVisuals()
+		self:killTimer(self.TIMER_REFRESH)
+		self.visualsUntil = nil
 		self:killTimer(self.TIMER_HIDE_HUD)
 		self:killTimer(self.TIMER_CLEAR_HIGHLIGHT)
 		self.noTargetWatchUntil = nil
@@ -637,6 +676,12 @@ function CollectibleScout(Ob)
 
 	function Ob:highlightTargetEntity(target)
 		if target == self.highlightTarget and self.highlightFX ~= nil then
+			if target.splineFollowing ~= nil then
+				local x, y, z = self:getTargetPosition(target)
+				if x ~= nil then
+					self.highlightFX:setPosition(x, y + self.highlightOffsetY, z)
+				end
+			end
 			return
 		end
 
@@ -657,13 +702,21 @@ function CollectibleScout(Ob)
 						SetEntityFlag(self.highlightFX, ENTITY_POST_EFFECTS, 1)
 					end
 					self.highlightFX:run()
-					local rootJoint = GetRootJointName(target)
-					if rootJoint then
-						self.highlightFX:attach(target, rootJoint)
+					if target.splineFollowing ~= nil then
+						self.highlightFX:detach()
+						local x, y, z = self:getTargetPosition(target)
+						if x ~= nil then
+							self.highlightFX:setPosition(x, y + self.highlightOffsetY, z)
+						end
 					else
-						self.highlightFX:attach(target)
+						local rootJoint = GetRootJointName(target)
+						if rootJoint then
+							self.highlightFX:attach(target, rootJoint)
+						else
+							self.highlightFX:attach(target)
+						end
+						self.highlightFX:setPosition(0, self.highlightOffsetY, 0)
 					end
-					self.highlightFX:setPosition(0, self.highlightOffsetY, 0)
 					self.highlightFX:setScale(2)
 				end
 			end
@@ -688,6 +741,13 @@ function CollectibleScout(Ob)
 	end
 
 	function Ob:refreshSelectedHud()
+		if self.visualsUntil == nil and self.trackerActive ~= 1 then
+			return
+		end
+		if self.visualsUntil ~= nil and GetGameTimeSecs() >= self.visualsUntil then
+			self:clearTemporaryVisuals()
+			return
+		end
 		if self.manualTargetOverride == 1 and self.bestEntity ~= nil then
 			self:refreshTrackedHudOnly()
 		elseif self.candidates ~= nil and getn(self.candidates) > 0 then
@@ -747,8 +807,8 @@ function CollectibleScout(Ob)
 		for i = 1, getn(self.candidates) do
 			local candidate = self.candidates[i]
 			local ent = candidate.entity
-			if ent ~= nil and ent.getPosition ~= nil and (IsDead == nil or IsDead(ent) ~= 1) then
-				local x, y, z = ent:getPosition()
+			if self:isCandidateAvailable(ent) == 1 then
+				local x, y, z = self:getTargetPosition(ent)
 				if x ~= nil then
 					local dist = GetDistance(self.playerX, self.playerY, self.playerZ, x, y, z)
 					candidate.distance = dist
@@ -775,10 +835,10 @@ function CollectibleScout(Ob)
 	end
 
 	function Ob:refreshTrackedHudOnly()
-		if self.bestEntity == nil or self.bestEntity.getPosition == nil then
+		if self.bestEntity == nil then
 			return
 		end
-		if IsDead ~= nil and IsDead(self.bestEntity) == 1 then
+		if self:isCandidateAvailable(self.bestEntity) ~= 1 then
 			self.manualTargetOverride = 0
 			self:refreshNearestFromCachedCandidates()
 			return
@@ -789,8 +849,10 @@ function CollectibleScout(Ob)
 			return
 		end
 
-		local x, y, z = self.bestEntity:getPosition()
+		local x, y, z = self:getTargetPosition(self.bestEntity)
 		if x == nil then
+			self.manualTargetOverride = 0
+			self:refreshNearestFromCachedCandidates()
 			return
 		end
 
@@ -799,6 +861,7 @@ function CollectibleScout(Ob)
 		self.bestZ = z
 		self.bestDistance = GetDistance(self.playerX, self.playerY, self.playerZ, x, y, z)
 		self:showSelectedHud()
+		self:highlightTargetEntity(self.bestEntity)
 	end
 
 	function Ob:showSelectedHud()
@@ -824,6 +887,7 @@ function CollectibleScout(Ob)
 		self:killTimer(self.TIMER_CLEAR_HIGHLIGHT)
 		self:clearHud()
 		self:clearHighlight()
+		self:startTemporaryRefresh()
 
 		if self.candidates ~= nil and getn(self.candidates) > 0 then
 			self:selectNextCachedCandidate()
@@ -858,8 +922,8 @@ function CollectibleScout(Ob)
 		for i = 1, getn(self.candidates) do
 			local candidate = self.candidates[i]
 			local ent = candidate.entity
-			if ent ~= nil and ent.getPosition ~= nil and (IsDead == nil or IsDead(ent) ~= 1) then
-				local x, y, z = ent:getPosition()
+			if self:isCandidateAvailable(ent) == 1 then
+				local x, y, z = self:getTargetPosition(ent)
 				if x ~= nil then
 					local dist = GetDistance(self.playerX, self.playerY, self.playerZ, x, y, z)
 					candidate.distance = dist
@@ -902,8 +966,15 @@ function CollectibleScout(Ob)
 		self:killTimer(self.TIMER_TRACKER)
 		self:killTimer(self.TIMER_CLEAR_HIGHLIGHT)
 		self:clearTemporaryVisuals()
+		self:startTemporaryRefresh()
 		self:trackerTick()
 		self:createTimerSecs(self.highlightDisplaySecs, self.TIMER_CLEAR_HIGHLIGHT)
+	end
+
+	function Ob:startTemporaryRefresh()
+		self.visualsUntil = GetGameTimeSecs() + self.highlightDisplaySecs
+		self:killTimer(self.TIMER_REFRESH)
+		self:createTimer(self.refreshInterval, self.TIMER_REFRESH)
 	end
 
 	function Ob:stopTracker()
