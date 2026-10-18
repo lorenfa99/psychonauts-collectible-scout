@@ -1,0 +1,13 @@
+Collectible Scout 0.2.2 for Psychonauts
+
+1. Extract the entire ZIP, then close Psychonauts.
+2. Double-click Install.cmd. Choose the game folder if it is not found for you.
+3. Launch the game through AstralatheLauncher.exe and press F3 to scan.
+
+Astralathe is required. If you have not installed it yet, follow:
+https://gitlab.com/scrunguscrungus/astralathe/-/wikis/Installing%20Astralathe
+
+The installer enables the mod and backs up any files it replaces. It can update
+an existing version. Your game saves are not changed by the installer.
+
+See README.md for manual installation and other controls.
